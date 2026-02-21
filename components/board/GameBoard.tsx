@@ -1,0 +1,338 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
+import { useGameStore } from '@/lib/game-engine/gameState';
+import { getAIAction, executeAIAction, getAIDiscardTokens } from '@/lib/game-engine/aiLogic';
+import { useSocket, useOnlineGame } from '@/lib/socket';
+import { SERVER_EVENTS as SE } from '@/lib/game-protocol';
+import type { DevelopmentCard as DevelopmentCardType, GemColor, GemType } from '@/lib/game-engine/types';
+
+import CardGrid from './CardGrid';
+import NobleRow from './NobleRow';
+import TokenBank from './TokenBank';
+import PlayerHand from './PlayerHand';
+import PlayerSidebar from './PlayerSidebar';
+import TurnIndicator from '@/components/game-ui/TurnIndicator';
+import ActionModal from '@/components/game-ui/ActionModal';
+import TokenSelectionModal from '@/components/game-ui/TokenSelectionModal';
+import DiscardModal from '@/components/game-ui/DiscardModal';
+import NobleChoiceModal from '@/components/game-ui/NobleChoiceModal';
+import WinScreen from '@/components/game-ui/WinScreen';
+
+export default function GameBoard() {
+  const state = useGameStore();
+  const {
+    phase, players, currentPlayerIndex, board, round, winner, turnLog,
+    previousState, pendingAction, deckCounts, mode, yourPlayerId,
+    takeThreeTokens, takeTwoTokens, purchaseCard, reserveCard, reserveFromDeck,
+    discardTokens, claimNoble, undo, initGame, syncState,
+  } = state;
+
+  const { socket, status: connectionStatus } = useSocket();
+  const handleActionError = useCallback((message: string) => toast.error(message), []);
+  const handleGameState = useCallback(
+    (payload: { gameState: Parameters<typeof syncState>[0]['gameState']; yourPlayerId: string }) => {
+      syncState(payload);
+    },
+    [syncState],
+  );
+  const onlineActions = useOnlineGame(handleGameState, handleActionError);
+
+  const currentPlayer = players[currentPlayerIndex] || null;
+  const isOnline = mode === 'online';
+  const isCurrentPlayerAI = currentPlayer?.isAI ?? false;
+  const isMyTurn = isOnline ? currentPlayer?.id === yourPlayerId : !isCurrentPlayerAI;
+  const isHumanTurn = phase === 'playing' && isMyTurn;
+
+  const [selectedCard, setSelectedCard] = useState<DevelopmentCardType | null>(null);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [selectedTokens, setSelectedTokens] = useState<GemColor[]>([]);
+  const [aiThinking, setAiThinking] = useState(false);
+  const [showTurnLog, setShowTurnLog] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
+
+  const runAITurn = useCallback(() => {
+    if (!currentPlayer || !currentPlayer.isAI) return;
+    if (phase !== 'playing' && phase !== 'discardTokens' && phase !== 'nobleChoice') return;
+
+    setAiThinking(true);
+
+    setTimeout(() => {
+      const currentState = useGameStore.getState();
+      const aiPlayer = currentState.players[currentState.currentPlayerIndex];
+      if (!aiPlayer?.isAI) { setAiThinking(false); return; }
+
+      if (currentState.phase === 'discardTokens' && currentState.pendingAction?.type === 'discard') {
+        const toDiscard = getAIDiscardTokens(aiPlayer, currentState.pendingAction.tokensToDiscard);
+        currentState.discardTokens(toDiscard as Partial<Record<GemType, number>>);
+      } else if (currentState.phase === 'nobleChoice' && currentState.pendingAction?.type === 'nobleChoice') {
+        currentState.claimNoble(currentState.pendingAction.nobleIds[0]);
+      } else if (currentState.phase === 'playing') {
+        const action = getAIAction(aiPlayer, currentState);
+        executeAIAction(action);
+      }
+
+      setAiThinking(false);
+    }, 800 + Math.random() * 700);
+  }, [currentPlayer, phase]);
+
+  useEffect(() => {
+    if (isOnline) return;
+    if (currentPlayer?.isAI && (phase === 'playing' || phase === 'discardTokens' || phase === 'nobleChoice')) {
+      const timer = setTimeout(runAITurn, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [isOnline, currentPlayerIndex, phase, currentPlayer?.isAI, runAITurn]);
+
+  useEffect(() => {
+    if (!isOnline || !socket) return;
+    const onDisconnected = (payload: { playerName: string }) => toast.info(`${payload.playerName} disconnected`);
+    const onReconnected = (payload: { playerId: string }) => {
+      const name = players.find((p) => p.id === payload.playerId)?.name ?? 'A player';
+      toast.success(`${name} reconnected`);
+    };
+    socket.on(SE.playerReconnected, onReconnected);
+    socket.on(SE.playerDisconnected, onDisconnected);
+    return () => {
+      socket.off(SE.playerReconnected, onReconnected);
+      socket.off(SE.playerDisconnected, onDisconnected);
+    };
+  }, [isOnline, socket, players]);
+
+  function handleCardClick(card: DevelopmentCardType) {
+    if (!isHumanTurn) return;
+    if ('hidden' in card && card.hidden) return;
+    setSelectedCard(card);
+  }
+
+  function handleDeckClick(tier: 1 | 2 | 3) {
+    if (!isHumanTurn) return;
+    if (isOnline) onlineActions.reserveFromDeck(tier);
+    else reserveFromDeck(tier);
+  }
+
+  function handleTokenBankClick(color: GemColor) {
+    if (!isHumanTurn) return;
+    setShowTokenModal(true);
+  }
+
+  function handlePurchase() {
+    if (!selectedCard) return;
+    if (isOnline) onlineActions.purchaseCard(selectedCard.id);
+    else purchaseCard(selectedCard.id);
+    setSelectedCard(null);
+  }
+
+  function handleReserve() {
+    if (!selectedCard) return;
+    if (isOnline) onlineActions.reserveCard(selectedCard.id);
+    else reserveCard(selectedCard.id);
+    setSelectedCard(null);
+  }
+
+  function handleTakeThree(colors: GemColor[]) {
+    if (isOnline) onlineActions.takeThreeTokens(colors);
+    else takeThreeTokens(colors);
+    setShowTokenModal(false);
+    setSelectedTokens([]);
+  }
+
+  function handleTakeTwo(color: GemColor) {
+    if (isOnline) onlineActions.takeTwoTokens(color);
+    else takeTwoTokens(color);
+    setShowTokenModal(false);
+    setSelectedTokens([]);
+  }
+
+  function handleDiscard(tokens: Partial<Record<GemType, number>>) {
+    if (isOnline) onlineActions.discardTokens(tokens);
+    else discardTokens(tokens);
+  }
+
+  function handleNobleChoice(nobleId: string) {
+    if (isOnline) onlineActions.claimNoble(nobleId);
+    else claimNoble(nobleId);
+  }
+
+  if (phase === 'setup' || players.length === 0) {
+    return null;
+  }
+
+  const tiers = [
+    { tier: 3 as const, visible: board.tier3.visible, deckCount: deckCounts?.tier3 ?? board.tier3.deck.length },
+    { tier: 2 as const, visible: board.tier2.visible, deckCount: deckCounts?.tier2 ?? board.tier2.deck.length },
+    { tier: 1 as const, visible: board.tier1.visible, deckCount: deckCounts?.tier1 ?? board.tier1.deck.length },
+  ];
+
+  return (
+    <div
+      className="w-screen h-screen overflow-hidden relative flex flex-col"
+      style={{
+        background: `
+          repeating-linear-gradient(90deg, transparent 0px, transparent 48px, rgba(255,255,255,0.015) 48px, rgba(255,255,255,0.015) 50px),
+          repeating-linear-gradient(180deg, transparent 0px, transparent 100px, rgba(0,0,0,0.1) 100px, rgba(0,0,0,0.1) 102px),
+          linear-gradient(135deg, #1C0F07 0%, #0D0702 100%)
+        `,
+      }}
+    >
+      {isOnline && connectionStatus !== 'connected' && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 px-4 py-2 rounded-lg bg-amber-900/90 text-amber-200 text-sm font-medium">
+          Connection lost. Reconnecting…
+        </div>
+      )}
+      {isOnline && !isHumanTurn && phase === 'playing' && currentPlayer && (
+        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-lg bg-white/10 text-white/90 text-sm">
+          Waiting for {currentPlayer.name}…
+        </div>
+      )}
+      <TurnIndicator
+        currentPlayer={currentPlayer}
+        round={round}
+        phase={phase}
+        isAIThinking={aiThinking}
+        onUndo={undo}
+        canUndo={!isOnline && !!previousState && !isCurrentPlayerAI}
+      />
+
+      <div className="flex-1 flex overflow-hidden relative">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className="p-2 md:p-4 pb-1 md:pb-2 overflow-hidden">
+            <NobleRow nobles={board.nobles} />
+          </div>
+
+          <div className="flex-1 flex overflow-hidden px-2 md:px-4">
+            <div className="flex-1 overflow-hidden py-2 min-w-0">
+              <CardGrid
+                tiers={tiers}
+                currentPlayer={currentPlayer}
+                onCardClick={handleCardClick}
+                onDeckClick={handleDeckClick}
+                disabled={!isHumanTurn}
+              />
+            </div>
+
+            <div className="shrink-0">
+              <TokenBank
+                tokens={board.tokens}
+                selectedTokens={selectedTokens}
+                onTokenClick={handleTokenBankClick}
+                disabled={!isHumanTurn}
+              />
+            </div>
+          </div>
+
+          <div className="overflow-hidden">
+            <PlayerHand
+              player={currentPlayer}
+              isActive={true}
+              onReservedCardClick={(card) => handleCardClick(card)}
+            />
+          </div>
+        </div>
+
+        <button
+          className="md:hidden absolute top-2 right-2 z-20 bg-[#B8860B]/80 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm"
+          onClick={() => setShowSidebar(!showSidebar)}
+        >
+          {showSidebar ? '✕' : '☰'}
+        </button>
+
+        <div
+          className={`border-l h-full flex flex-col shrink-0 transition-all ${showSidebar ? 'w-[200px]' : 'w-0 overflow-hidden border-l-0'} hidden md:flex md:w-[200px]`}
+          style={{ borderColor: 'rgba(184,134,11,0.3)' }}
+        >
+          <PlayerSidebar
+            players={players}
+            currentPlayerIndex={currentPlayerIndex}
+            activePlayerIndex={currentPlayerIndex}
+            yourPlayerId={isOnline ? yourPlayerId : null}
+            isOnline={isOnline}
+            connectionStatus={connectionStatus}
+          />
+
+          <div
+            className="border-t p-3 max-h-[200px] overflow-y-auto"
+            style={{ borderColor: 'rgba(184,134,11,0.2)' }}
+          >
+            <h4
+              className="text-[#B8860B] text-xs tracking-widest mb-2"
+              style={{ fontFamily: 'var(--font-cinzel)' }}
+            >
+              LOG
+            </h4>
+            <div className="flex flex-col gap-1">
+              {turnLog.slice(0, 8).map((log, i) => (
+                <p key={i} className={`text-xs ${i === 0 ? 'text-white/80' : 'text-white/40'}`}>
+                  {log}
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {selectedCard && currentPlayer && (
+          <ActionModal
+            card={selectedCard}
+            player={currentPlayer}
+            onPurchase={handlePurchase}
+            onReserve={handleReserve}
+            onClose={() => setSelectedCard(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showTokenModal && (
+          <TokenSelectionModal
+            bankTokens={board.tokens}
+            onConfirmThree={handleTakeThree}
+            onConfirmTwo={handleTakeTwo}
+            onClose={() => { setShowTokenModal(false); setSelectedTokens([]); }}
+          />
+        )}
+      </AnimatePresence>
+
+      {phase === 'discardTokens' && currentPlayer && !isCurrentPlayerAI && pendingAction?.type === 'discard' && (
+        <DiscardModal
+          player={currentPlayer}
+          tokensToDiscard={pendingAction.tokensToDiscard}
+          onConfirm={handleDiscard}
+        />
+      )}
+
+      {phase === 'nobleChoice' && currentPlayer && !isCurrentPlayerAI && pendingAction?.type === 'nobleChoice' && (
+        <NobleChoiceModal
+          nobles={board.nobles.filter((n) => pendingAction.nobleIds.includes(n.id))}
+          onSelect={handleNobleChoice}
+        />
+      )}
+
+      {phase === 'ended' && winner && (
+        <WinScreen
+          winner={winner}
+          players={players}
+          onPlayAgain={() => {
+            if (isOnline) {
+              window.location.href = '/';
+              return;
+            }
+            const setupPlayers = players.map((p) => ({
+              name: p.name,
+              isAI: p.isAI,
+              aiDifficulty: p.aiDifficulty,
+            }));
+            initGame(setupPlayers);
+          }}
+          onMainMenu={() => {
+            try { sessionStorage.removeItem('splendor_room'); } catch (_) {}
+            window.location.href = '/';
+          }}
+        />
+      )}
+    </div>
+  );
+}
