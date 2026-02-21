@@ -3,20 +3,20 @@
 import { motion } from 'framer-motion';
 import type { NobleCard as NobleCardType, GemColor } from '@/lib/game-engine/types';
 
-const gemSymbols: Record<GemColor, string> = {
-  diamond: '◆',
-  sapphire: '✦',
-  emerald: '♦',
-  ruby: '❤',
-  onyx: '●',
+const gemLabels: Record<GemColor, string> = {
+  diamond: 'White',
+  sapphire: 'Blue',
+  emerald: 'Green',
+  ruby: 'Red',
+  onyx: 'Black',
 };
 
 const gemTextColors: Record<GemColor, string> = {
-  diamond: 'text-[#F5F0E8]',
-  sapphire: 'text-[#3A7BD5]',
-  emerald: 'text-[#2ECC71]',
-  ruby: 'text-[#E74C3C]',
-  onyx: 'text-[#9090B0]',
+  diamond: 'text-[#FFF8F0]',
+  sapphire: 'text-[#60A5FA]',
+  emerald: 'text-[#34D399]',
+  ruby: 'text-[#F87171]',
+  onyx: 'text-[#A5B4FC]',
 };
 
 const nobleColors = [
@@ -36,14 +36,14 @@ export default function NobleCard({ noble, claimed = false, onClick }: NobleCard
 
   return (
     <motion.div
-      className={`w-[100px] h-[100px] rounded-lg relative overflow-hidden
+      className={`w-[100px] h-[130px] rounded-lg relative overflow-hidden
         ${!claimed ? 'cursor-pointer' : 'grayscale'}
       `}
       style={{
         borderColor: '#B8860B',
         borderWidth: '3px',
         borderStyle: 'solid',
-        background: 'linear-gradient(135deg, #1A1000, #2D1F00)',
+        background: 'linear-gradient(135deg, #2D2008, #3D2A0C)',
         boxShadow: !claimed ? '0 0 20px rgba(184,134,11,0.4)' : 'none',
       }}
       whileHover={!claimed ? { scale: 1.08 } : undefined}
@@ -81,13 +81,17 @@ export default function NobleCard({ noble, claimed = false, onClick }: NobleCard
         </div>
       </div>
 
-      <div className="absolute bottom-1 left-0 right-0 flex justify-center gap-1 px-1 z-10">
+      <div className="absolute bottom-1 left-0 right-0 flex flex-col items-center justify-end gap-0.5 px-1 z-10">
         {Object.entries(noble.requirements).map(([gem, count]) => (
-          <div key={gem} className="flex items-center gap-0.5 bg-black/80 rounded-full px-1.5 py-0.5 border border-white/10">
-            <span className={`text-xs font-bold ${gemTextColors[gem as GemColor]}`}>
-              {gemSymbols[gem as GemColor]}
+          <div
+            key={gem}
+            className="flex items-center justify-center gap-1.5 rounded px-1.5 py-0.5 w-full max-w-[100px] border border-[#B8860B]/50"
+            style={{ background: 'rgba(20,14,6,0.85)' }}
+          >
+            <span className={`text-xs font-bold ${gemTextColors[gem as GemColor]} drop-shadow-[0_0_2px_rgba(0,0,0,0.8)]`}>
+              {gemLabels[gem as GemColor]}
             </span>
-            <span className="text-white text-xs font-bold">{count}</span>
+            <span className="text-[#F1C40F] text-xs font-bold" style={{ fontFamily: 'var(--font-cinzel)' }}>{count}</span>
           </div>
         ))}
       </div>

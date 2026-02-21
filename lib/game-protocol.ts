@@ -112,6 +112,7 @@ export const CLIENT_EVENTS = {
   startGame: 'startGame',
   action: 'action',
   rejoinRoom: 'rejoinRoom',
+  quitAndReplaceWithAI: 'quitAndReplaceWithAI',
 } as const;
 
 export const SERVER_EVENTS = {
@@ -123,4 +124,5 @@ export const SERVER_EVENTS = {
   actionError: 'actionError',
   playerDisconnected: 'playerDisconnected',
   playerReconnected: 'playerReconnected',
+  quitAccepted: 'quitAccepted',
 } as const;

@@ -6,18 +6,23 @@ import type { DevelopmentCard as DevelopmentCardType, GemColor } from '@/lib/gam
 
 type CardState = 'default' | 'affordable' | 'unaffordable' | 'reserved';
 
-const tierColors: Record<number, { light: string; dark: string }> = {
-  1: { light: '#2D5A3D', dark: '#1A3D28' },
-  2: { light: '#5A2D2D', dark: '#3D1A1A' },
-  3: { light: '#2D2D5A', dark: '#1A1A3D' },
+// One image per gem (card bonus). Put PNGs in public/images/cards/:
+// diamond.png, sapphire.png, emerald.png, ruby.png, onyx.png
+// For sharp display (no pixelation): use at least 360×510px (3× card size 120×170), or 240×340px for 2× retina.
+const cardBackgroundImages: Record<GemColor, string> = {
+  diamond: '/images/cards/diamond.png',
+  sapphire: '/images/cards/sapphire.png',
+  emerald: '/images/cards/emerald.png',
+  ruby: '/images/cards/ruby.png',
+  onyx: '/images/cards/onyx.png',
 };
 
-const bonusColors: Record<GemColor, string[]> = {
-  diamond: ['#F5F0E8', '#C8B99A'],
-  sapphire: ['#3A7BD5', '#1B4F8A'],
-  emerald: ['#27AE60', '#1A6B3C'],
-  ruby: ['#E74C3C', '#8B1A1A'],
-  onyx: ['#5D5D7A', '#1A1A2E'],
+const fallbackBgByGem: Record<GemColor, string> = {
+  diamond: '#E8DCC8',
+  sapphire: '#3B82F6',
+  emerald: '#10B981',
+  ruby: '#EF4444',
+  onyx: '#1a1a1a',
 };
 
 interface DevelopmentCardProps {
@@ -27,9 +32,9 @@ interface DevelopmentCardProps {
 }
 
 export default function DevelopmentCard({ card, state = 'default', onClick }: DevelopmentCardProps) {
-  const tierColor = tierColors[card.tier];
   const size = 'w-[120px] h-[170px]';
-  const colors = bonusColors[card.bonus];
+  const cardBg = cardBackgroundImages[card.bonus];
+  const fallbackBg = fallbackBgByGem[card.bonus];
 
   const glowShadow =
     state === 'affordable'
@@ -66,10 +71,7 @@ export default function DevelopmentCard({ card, state = 'default', onClick }: De
       `}
       style={{
         borderColor: 'rgba(184,134,11,0.5)',
-        background: `
-          repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px),
-          linear-gradient(135deg, ${tierColor.light}, ${tierColor.dark})
-        `,
+        backgroundColor: fallbackBg,
         boxShadow: glowShadow,
         transformOrigin: 'center bottom',
       }}
@@ -78,7 +80,14 @@ export default function DevelopmentCard({ card, state = 'default', onClick }: De
       transition={{ type: 'spring', stiffness: 400, damping: 20 }}
       onClick={onClick}
     >
-      <div className="flex justify-between items-start p-2">
+      <img
+        src={cardBg}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover object-center rounded-[10px] z-0"
+        style={{ imageRendering: 'auto' }}
+        role="presentation"
+      />
+      <div className="flex justify-between items-start p-2 relative z-10">
         <div className="flex items-center justify-center w-8">
           {card.prestige > 0 && (
             <span
@@ -97,33 +106,16 @@ export default function DevelopmentCard({ card, state = 'default', onClick }: De
         </div>
       </div>
 
-      <div className="flex-1 relative overflow-hidden">
-        <div
-          className="absolute inset-0"
-          style={{
-            background: `
-              radial-gradient(ellipse at 30% 40%, ${colors[0]} 0%, transparent 60%),
-              radial-gradient(ellipse at 70% 60%, ${colors[1]} 0%, transparent 50%),
-              radial-gradient(ellipse at 50% 50%, ${colors[0]}40 0%, transparent 70%)
-            `,
-          }}
-        />
-        <div
-          className="absolute inset-0 opacity-10"
-          style={{
-            backgroundImage:
-              'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' /%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' /%3E%3C/svg%3E")',
-          }}
-        />
-        <div
-          className="absolute bottom-2 right-2 text-white/40 font-bold text-xs"
+      <div className="flex-1 relative z-10 flex items-end justify-end p-2">
+        <span
+          className="text-white/70 font-bold text-xs drop-shadow-md"
           style={{ fontFamily: 'var(--font-cinzel)' }}
         >
           {['I', 'II', 'III'][card.tier - 1]}
-        </div>
+        </span>
       </div>
 
-      <div className="bg-black/30 rounded-b-xl p-2 min-h-[44px] flex items-center justify-center">
+      <div className="bg-black/40 rounded-b-xl p-2 min-h-[44px] flex items-center justify-center relative z-10">
         {Object.keys(card.cost).length > 0 ? (
           <div className="flex flex-wrap gap-1 justify-center max-w-full">
             {Object.entries(card.cost).map(([gem, count]) => (

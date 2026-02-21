@@ -396,6 +396,20 @@ export class GameRoomLogic {
     this.onStateChange?.();
   }
 
+  /** Replace a human player with AI (medium); if it's their turn, AI will run. */
+  replacePlayerWithAI(playerId: string): void {
+    const player = this.state.players.find((p) => p.id === playerId);
+    if (!player || player.isAI) return;
+    player.isAI = true;
+    player.aiDifficulty = 'medium';
+    player.name = 'AI (medium)';
+    this.onStateChange?.();
+    const current = this.state.players[this.state.currentPlayerIndex];
+    if (current?.id === playerId && current.isAI) {
+      this.runAITurn();
+    }
+  }
+
   handleAction(playerId: string, payload: GameActionPayload): string | null {
     const state = this.state;
     const current = state.players[state.currentPlayerIndex];

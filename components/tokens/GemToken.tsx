@@ -11,8 +11,8 @@ const gemConfig: Record<GemType, { symbol: string; gradient: string; glow: strin
   },
   sapphire: {
     symbol: '✦',
-    gradient: 'radial-gradient(circle at 30% 30%, #3A7BD5, #1B4F8A 60%, #0D2750)',
-    glow: 'rgba(58, 123, 213, 0.6)',
+    gradient: 'radial-gradient(circle at 30% 30%, #93C5FD, #3B82F6 50%, #2563EB)',
+    glow: 'rgba(59, 130, 246, 0.7)',
   },
   emerald: {
     symbol: '♦',
@@ -21,8 +21,8 @@ const gemConfig: Record<GemType, { symbol: string; gradient: string; glow: strin
   },
   ruby: {
     symbol: '❤',
-    gradient: 'radial-gradient(circle at 30% 30%, #E74C3C, #8B1A1A 60%, #450D0D)',
-    glow: 'rgba(231, 76, 60, 0.6)',
+    gradient: 'radial-gradient(circle at 30% 30%, #FCA5A5, #EF4444 50%, #DC2626)',
+    glow: 'rgba(239, 68, 68, 0.7)',
   },
   onyx: {
     symbol: '●',
@@ -31,8 +31,8 @@ const gemConfig: Record<GemType, { symbol: string; gradient: string; glow: strin
   },
   gold: {
     symbol: '★',
-    gradient: 'radial-gradient(circle at 30% 30%, #F1C40F, #C9981D 50%, #8B6914)',
-    glow: 'rgba(241, 196, 15, 0.7)',
+    gradient: 'radial-gradient(circle at 30% 30%, #FFD700, #D4AF37 50%, #B8860B)',
+    glow: 'rgba(212, 175, 55, 0.7)',
   },
 };
 

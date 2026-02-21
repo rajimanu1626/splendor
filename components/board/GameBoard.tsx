@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useGameStore } from '@/lib/game-engine/gameState';
 import { getAIAction, executeAIAction, getAIDiscardTokens } from '@/lib/game-engine/aiLogic';
-import { useSocket, useOnlineGame } from '@/lib/socket';
-import { SERVER_EVENTS as SE } from '@/lib/game-protocol';
+import { useSocket, useRoom, useOnlineGame } from '@/lib/socket';
+import { CLIENT_EVENTS, SERVER_EVENTS as SE } from '@/lib/game-protocol';
 import type { DevelopmentCard as DevelopmentCardType, GemColor, GemType } from '@/lib/game-engine/types';
 
 import CardGrid from './CardGrid';
@@ -22,6 +23,7 @@ import NobleChoiceModal from '@/components/game-ui/NobleChoiceModal';
 import WinScreen from '@/components/game-ui/WinScreen';
 
 export default function GameBoard() {
+  const router = useRouter();
   const state = useGameStore();
   const {
     phase, players, currentPlayerIndex, board, round, winner, turnLog,
@@ -31,6 +33,7 @@ export default function GameBoard() {
   } = state;
 
   const { socket, status: connectionStatus } = useSocket();
+  const { leaveRoom } = useRoom();
   const handleActionError = useCallback((message: string) => toast.error(message), []);
   const handleGameState = useCallback(
     (payload: { gameState: Parameters<typeof syncState>[0]['gameState']; yourPlayerId: string }) => {
@@ -45,12 +48,16 @@ export default function GameBoard() {
   const isCurrentPlayerAI = currentPlayer?.isAI ?? false;
   const isMyTurn = isOnline ? currentPlayer?.id === yourPlayerId : !isCurrentPlayerAI;
   const isHumanTurn = phase === 'playing' && isMyTurn;
+  const bottomPlayer =
+    isOnline && yourPlayerId != null
+      ? (players.find((p) => p.id === yourPlayerId) ?? currentPlayer)
+      : currentPlayer;
 
   const [selectedCard, setSelectedCard] = useState<DevelopmentCardType | null>(null);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<GemColor[]>([]);
   const [aiThinking, setAiThinking] = useState(false);
-  const [showTurnLog, setShowTurnLog] = useState(false);
+  const [showTurnLog, setShowTurnLog] = useState(true);
   const [showSidebar, setShowSidebar] = useState(true);
 
   const runAITurn = useCallback(() => {
@@ -93,13 +100,25 @@ export default function GameBoard() {
       const name = players.find((p) => p.id === payload.playerId)?.name ?? 'A player';
       toast.success(`${name} reconnected`);
     };
+    const onQuitAccepted = () => {
+      leaveRoom();
+      router.push('/');
+    };
     socket.on(SE.playerReconnected, onReconnected);
     socket.on(SE.playerDisconnected, onDisconnected);
+    socket.on(SE.quitAccepted, onQuitAccepted);
     return () => {
       socket.off(SE.playerReconnected, onReconnected);
       socket.off(SE.playerDisconnected, onDisconnected);
+      socket.off(SE.quitAccepted, onQuitAccepted);
     };
-  }, [isOnline, socket, players]);
+  }, [isOnline, socket, players, leaveRoom, router]);
+
+  const handleQuit = useCallback(() => {
+    if (!socket) return;
+    if (!window.confirm('Quit this game? Your seat will be taken over by an AI (medium) player.')) return;
+    socket.emit(CLIENT_EVENTS.quitAndReplaceWithAI);
+  }, [socket]);
 
   function handleCardClick(card: DevelopmentCardType) {
     if (!isHumanTurn) return;
@@ -182,11 +201,6 @@ export default function GameBoard() {
           Connection lost. Reconnecting…
         </div>
       )}
-      {isOnline && !isHumanTurn && phase === 'playing' && currentPlayer && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-lg bg-white/10 text-white/90 text-sm">
-          Waiting for {currentPlayer.name}…
-        </div>
-      )}
       <TurnIndicator
         currentPlayer={currentPlayer}
         round={round}
@@ -194,6 +208,7 @@ export default function GameBoard() {
         isAIThinking={aiThinking}
         onUndo={undo}
         canUndo={!isOnline && !!previousState && !isCurrentPlayerAI}
+        onQuit={isOnline ? handleQuit : undefined}
       />
 
       <div className="flex-1 flex overflow-hidden relative">
@@ -224,11 +239,13 @@ export default function GameBoard() {
           </div>
 
           <div className="overflow-hidden">
-            <PlayerHand
-              player={currentPlayer}
-              isActive={true}
-              onReservedCardClick={(card) => handleCardClick(card)}
-            />
+            {bottomPlayer && (
+              <PlayerHand
+                player={bottomPlayer}
+                isActive={isMyTurn}
+                onReservedCardClick={(card) => handleCardClick(card)}
+              />
+            )}
           </div>
         </div>
 
@@ -253,22 +270,35 @@ export default function GameBoard() {
           />
 
           <div
-            className="border-t p-3 max-h-[200px] overflow-y-auto"
+            className="border-t overflow-hidden flex flex-col"
             style={{ borderColor: 'rgba(184,134,11,0.2)' }}
           >
-            <h4
-              className="text-[#B8860B] text-xs tracking-widest mb-2"
-              style={{ fontFamily: 'var(--font-cinzel)' }}
+            <button
+              type="button"
+              onClick={() => setShowTurnLog((v) => !v)}
+              className="w-full p-3 flex items-center justify-between gap-2 text-left hover:bg-white/5 transition-colors"
             >
-              LOG
-            </h4>
-            <div className="flex flex-col gap-1">
-              {turnLog.slice(0, 8).map((log, i) => (
-                <p key={i} className={`text-xs ${i === 0 ? 'text-white/80' : 'text-white/40'}`}>
-                  {log}
-                </p>
-              ))}
-            </div>
+              <h4
+                className="text-[#B8860B] text-xs tracking-widest"
+                style={{ fontFamily: 'var(--font-cinzel)' }}
+              >
+                LOG
+              </h4>
+              <span className="text-[#B8860B]/80 text-sm shrink-0" aria-hidden>
+                {showTurnLog ? '−' : '+'}
+              </span>
+            </button>
+            {showTurnLog && (
+              <div className="px-3 pb-3 max-h-[200px] overflow-y-auto">
+                <div className="flex flex-col gap-1">
+                  {turnLog.slice(0, 8).map((log, i) => (
+                    <p key={i} className={`text-xs ${i === 0 ? 'text-white/80' : 'text-white/40'}`}>
+                      {log}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

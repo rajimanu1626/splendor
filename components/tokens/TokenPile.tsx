@@ -14,25 +14,13 @@ interface TokenPileProps {
 export default function TokenPile({ type, count, onClick, disabled, selected }: TokenPileProps) {
   return (
     <div className="relative flex items-center gap-2">
-      <div className="relative">
-        {count >= 3 && (
-          <div className="opacity-30 absolute -top-2 left-1">
-            <GemToken type={type} size="lg" />
-          </div>
-        )}
-        {count >= 2 && (
-          <div className="opacity-50 absolute -top-1 left-0.5">
-            <GemToken type={type} size="lg" />
-          </div>
-        )}
-        <GemToken
-          type={type}
-          size="lg"
-          onClick={onClick}
-          disabled={disabled || count === 0}
-          selected={selected}
-        />
-      </div>
+      <GemToken
+        type={type}
+        size="lg"
+        onClick={onClick}
+        disabled={disabled || count === 0}
+        selected={selected}
+      />
       <span className={`text-xl font-bold min-w-[24px] ${count > 0 ? 'text-white' : 'text-white/30'}`}>
         {count > 0 ? count : '–'}
       </span>

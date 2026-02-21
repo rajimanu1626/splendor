@@ -162,6 +162,19 @@ io.on('connection', (socket) => {
     broadcastGameState(info.room.roomCode);
   });
 
+  socket.on(CLIENT_EVENTS.quitAndReplaceWithAI, () => {
+    const result = RoomManager.replacePlayerWithAIBySocket(socket.id);
+    if (!result) {
+      socket.emit(SERVER_EVENTS.actionError, { message: 'Cannot quit (not in a started game)' });
+      return;
+    }
+    const game = gameRooms.get(result.roomCode);
+    if (game) game.replacePlayerWithAI(result.playerId);
+    socket.leave(result.roomCode);
+    broadcastGameState(result.roomCode);
+    socket.emit(SERVER_EVENTS.quitAccepted);
+  });
+
   socket.on('disconnect', () => {
     const info = RoomManager.getRoomBySocket(socket.id);
     if (!info) return;

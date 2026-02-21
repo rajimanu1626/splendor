@@ -178,6 +178,22 @@ class RoomManagerClass {
     return true;
   }
 
+  /** During a game, replace the player identified by socket with AI (medium). Returns roomCode and playerId or null. */
+  replacePlayerWithAIBySocket(socketId: string): { roomCode: string; playerId: string } | null {
+    const info = this.socketToRoom.get(socketId);
+    if (!info) return null;
+    const room = this.rooms.get(info.roomCode);
+    if (!room || !room.gameStarted) return null;
+    const player = room.players.find((p) => p.playerId === info.playerId);
+    if (!player || player.isAI) return null;
+    player.isAI = true;
+    player.aiDifficulty = 'medium';
+    player.playerName = 'AI (medium)';
+    player.socketId = null;
+    this.socketToRoom.delete(socketId);
+    return { roomCode: info.roomCode, playerId: info.playerId };
+  }
+
   setGameStarted(roomCode: string): void {
     const room = this.rooms.get(roomCode);
     if (room) room.gameStarted = true;

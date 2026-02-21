@@ -10,6 +10,7 @@ interface TurnIndicatorProps {
   isAIThinking?: boolean;
   onUndo?: () => void;
   canUndo?: boolean;
+  onQuit?: () => void;
 }
 
 export default function TurnIndicator({
@@ -19,6 +20,7 @@ export default function TurnIndicator({
   isAIThinking = false,
   onUndo,
   canUndo = false,
+  onQuit,
 }: TurnIndicatorProps) {
   return (
     <div
@@ -72,6 +74,17 @@ export default function TurnIndicator({
             onClick={onUndo}
           >
             Undo
+          </motion.button>
+        )}
+        {onQuit && (
+          <motion.button
+            type="button"
+            className="text-red-300/80 hover:text-red-200 text-sm px-3 py-1 rounded-lg border border-red-400/30 hover:border-red-400/50 transition-colors"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onQuit}
+          >
+            Quit
           </motion.button>
         )}
       </div>

@@ -185,10 +185,40 @@ Certbot will add SSL and redirect HTTP → HTTPS. Ensure your nginx config uses 
 
 ## 10. Troubleshooting
 
+### Socket status not connected
+
+The browser must talk to the **same origin** (e.g. `https://splendor.r4j.co.in`) for the socket; nginx then routes `/socket.io/` to the game server. Do **both** of the following.
+
+1. **Client (Next.js)**  
+   Set `NEXT_PUBLIC_GAME_SERVER_URL=https://splendor.r4j.co.in` in `.env` (no port, same as your frontend domain).  
+   Then **rebuild** the app: `npm run build`.  
+   Restart Next (e.g. `pm2 restart splendor-next`).  
+   `NEXT_PUBLIC_*` is baked in at build time; changing it without rebuild has no effect.
+
+2. **Game server (Socket.IO)**  
+   The server only allows origins listed in `CORS_ORIGIN`. Run the server with:
+   ```bash
+   CORS_ORIGIN=https://splendor.r4j.co.in
+   ```
+   With PM2, set this in the process env, for example:
+   ```bash
+   pm2 delete splendor-server  # if it exists
+   cd /var/www/games/Splendor/splendor2
+   CORS_ORIGIN=https://splendor.r4j.co.in pm2 start npm --name "splendor-server" -- run server
+   pm2 save
+   ```
+   Or in `ecosystem.config.cjs`: `env: { CORS_ORIGIN: 'https://splendor.r4j.co.in' }`.
+
+3. **Nginx**  
+   Your config already proxies `/socket.io/` to the game server with WebSocket headers. No change needed unless you use a different config.
+
+4. **Cloudflare**  
+   WebSockets are supported on the free plan. In the dashboard, ensure the proxy is “Proxied” (orange cloud) if you want traffic through Cloudflare.
+
 | Issue | What to check |
 |-------|----------------|
 | 502 Bad Gateway | Next.js and game server are running; ports 3000 and 3001 are correct in nginx. |
-| Socket never connects | CORS_ORIGIN matches the browser origin; nginx `/socket.io/` has WebSocket headers and long timeouts. |
+| Socket never connects | See “Socket status not connected” above: same-origin URL + rebuild, and CORS_ORIGIN on the game server. |
 | Connection drops after ~60s | Increase `proxy_read_timeout` and `proxy_send_timeout` in the `/socket.io/` block (e.g. 90s). |
 | Wrong site or 404 | `server_name splendor.r4j.co.in` and `proxy_pass` URLs in nginx. |
 
