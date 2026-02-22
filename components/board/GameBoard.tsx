@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { playTurnChime } from '@/lib/sounds';
 import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useGameStore } from '@/lib/game-engine/gameState';
@@ -13,6 +14,7 @@ import type { DevelopmentCard as DevelopmentCardType, GemColor, GemType } from '
 import CardGrid from './CardGrid';
 import NobleRow from './NobleRow';
 import TokenBank from './TokenBank';
+import ZoomableArea from './ZoomableArea';
 import PlayerHand from './PlayerHand';
 import PlayerSidebar from './PlayerSidebar';
 import TurnIndicator from '@/components/game-ui/TurnIndicator';
@@ -59,6 +61,22 @@ export default function GameBoard() {
   const [aiThinking, setAiThinking] = useState(false);
   const [showTurnLog, setShowTurnLog] = useState(true);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [rematchVotes, setRematchVotes] = useState<string[]>([]);
+  const [rematchTotalHumans, setRematchTotalHumans] = useState(0);
+  const prevPlayerIndexRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (mode !== 'online' || yourPlayerId == null) return;
+    const isMyTurnNow = currentPlayer?.id === yourPlayerId;
+    if (!isMyTurnNow) {
+      prevPlayerIndexRef.current = currentPlayerIndex;
+      return;
+    }
+    if (prevPlayerIndexRef.current !== undefined && prevPlayerIndexRef.current !== currentPlayerIndex) {
+      playTurnChime();
+    }
+    prevPlayerIndexRef.current = currentPlayerIndex;
+  }, [mode, yourPlayerId, currentPlayer?.id, currentPlayerIndex]);
 
   const runAITurn = useCallback(() => {
     if (!currentPlayer || !currentPlayer.isAI) return;
@@ -100,17 +118,33 @@ export default function GameBoard() {
       const name = players.find((p) => p.id === payload.playerId)?.name ?? 'A player';
       toast.success(`${name} reconnected`);
     };
+    const onPlayerQuit = (payload: { playerName: string }) =>
+      toast.info(`${payload.playerName} quit (replaced by AI)`);
     const onQuitAccepted = () => {
       leaveRoom();
       router.push('/');
     };
+    const onRematchUpdate = (payload: { rematchVotes: string[]; totalHumans: number }) => {
+      setRematchVotes(payload.rematchVotes);
+      setRematchTotalHumans(payload.totalHumans);
+    };
+    const onRematchStarted = () => {
+      setRematchVotes([]);
+      setRematchTotalHumans(0);
+    };
     socket.on(SE.playerReconnected, onReconnected);
     socket.on(SE.playerDisconnected, onDisconnected);
+    socket.on(SE.playerQuit, onPlayerQuit);
     socket.on(SE.quitAccepted, onQuitAccepted);
+    socket.on(SE.rematchUpdate, onRematchUpdate);
+    socket.on(SE.rematchStarted, onRematchStarted);
     return () => {
       socket.off(SE.playerReconnected, onReconnected);
       socket.off(SE.playerDisconnected, onDisconnected);
+      socket.off(SE.playerQuit, onPlayerQuit);
       socket.off(SE.quitAccepted, onQuitAccepted);
+      socket.off(SE.rematchUpdate, onRematchUpdate);
+      socket.off(SE.rematchStarted, onRematchStarted);
     };
   }, [isOnline, socket, players, leaveRoom, router]);
 
@@ -212,22 +246,22 @@ export default function GameBoard() {
       />
 
       <div className="flex-1 flex overflow-hidden relative">
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="p-2 md:p-4 pb-1 md:pb-2 overflow-hidden">
-            <NobleRow nobles={board.nobles} />
-          </div>
-
-          <div className="flex-1 flex overflow-hidden px-2 md:px-4">
-            <div className="flex-1 overflow-hidden py-2 min-w-0">
-              <CardGrid
-                tiers={tiers}
-                currentPlayer={currentPlayer}
-                onCardClick={handleCardClick}
-                onDeckClick={handleDeckClick}
-                disabled={!isHumanTurn}
-              />
-            </div>
-
+        <div className="flex-1 flex flex-col min-h-0 min-w-0">
+          <div className="flex-1 flex min-h-0 overflow-hidden px-2 md:px-4 py-2">
+            <ZoomableArea>
+              <div className="min-w-0 px-0 py-2">
+                <CardGrid
+                  tiers={tiers}
+                  currentPlayer={currentPlayer}
+                  onCardClick={handleCardClick}
+                  onDeckClick={handleDeckClick}
+                  disabled={!isHumanTurn}
+                />
+              </div>
+              <div className="shrink-0 flex justify-center px-2 pt-2 pb-2 min-w-0 overflow-hidden">
+                <NobleRow nobles={board.nobles} />
+              </div>
+            </ZoomableArea>
             <div className="shrink-0">
               <TokenBank
                 tokens={board.tokens}
@@ -238,7 +272,7 @@ export default function GameBoard() {
             </div>
           </div>
 
-          <div className="overflow-hidden">
+          <div className="shrink-0">
             {bottomPlayer && (
               <PlayerHand
                 player={bottomPlayer}
@@ -361,6 +395,11 @@ export default function GameBoard() {
             try { sessionStorage.removeItem('splendor_room'); } catch (_) {}
             window.location.href = '/';
           }}
+          isOnline={isOnline}
+          rematchVotes={rematchVotes}
+          totalHumans={rematchTotalHumans}
+          yourPlayerId={yourPlayerId}
+          onRequestRematch={isOnline && socket ? () => socket.emit(CLIENT_EVENTS.requestRematch) : undefined}
         />
       )}
     </div>

@@ -63,6 +63,7 @@ const initialState: GameState = {
   },
   round: 0,
   lastRound: false,
+  lastRoundStartedBy: null,
   winner: null,
   turnLog: [],
   pendingAction: null,
@@ -120,17 +121,19 @@ function checkNobles(state: GameState): boolean {
 
 function advanceTurn(state: GameState) {
   const reachedEnd = state.players.some((p) => p.prestige >= 15);
-  if (reachedEnd) state.lastRound = true;
+  if (reachedEnd && !state.lastRound) {
+    state.lastRound = true;
+    state.lastRoundStartedBy = state.currentPlayerIndex;
+  }
 
   state.currentPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
-  if (state.currentPlayerIndex === 0) {
-    state.round++;
-    if (state.lastRound) {
-      state.phase = 'ended';
-      state.winner = determineWinner(state.players);
-      addLog(state, state.winner ? `${state.winner.name} wins!` : 'Game ended in a tie!');
-      return;
-    }
+  if (state.currentPlayerIndex === 0) state.round++;
+
+  if (state.lastRound && state.lastRoundStartedBy !== null && state.currentPlayerIndex === state.lastRoundStartedBy) {
+    state.phase = 'ended';
+    state.winner = determineWinner(state.players);
+    addLog(state, state.winner ? `${state.winner.name} wins!` : 'Game ended in a tie!');
+    return;
   }
 
   state.phase = 'playing';
@@ -201,6 +204,7 @@ export const useGameStore = create<GameStore>()(
         state.deckCounts = deckCounts;
         state.round = gameState.round;
         state.lastRound = gameState.lastRound;
+        state.lastRoundStartedBy = gameState.lastRoundStartedBy ?? null;
         state.winner = gameState.winner ? { ...gameState.winner } : null;
         state.turnLog = [...gameState.turnLog];
         state.pendingAction = gameState.pendingAction;
@@ -215,9 +219,10 @@ export const useGameStore = create<GameStore>()(
         state.mode = 'local';
         state.yourPlayerId = null;
         state.deckCounts = null;
-        const players = setupPlayers.map((sp, i) =>
+        let players = setupPlayers.map((sp, i) =>
           createPlayer(`p-${i}`, sp.name, sp.isAI, sp.aiDifficulty),
         );
+        players = shuffleDeck(players);
 
         const tier1Deck = shuffleDeck([...TIER1_CARDS]);
         const tier2Deck = shuffleDeck([...TIER2_CARDS]);
@@ -249,6 +254,7 @@ export const useGameStore = create<GameStore>()(
         };
         state.round = 1;
         state.lastRound = false;
+        state.lastRoundStartedBy = null;
         state.winner = null;
         state.turnLog = ['Game started!'];
         state.pendingAction = null;

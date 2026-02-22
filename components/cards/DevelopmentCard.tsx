@@ -25,6 +25,14 @@ const fallbackBgByGem: Record<GemColor, string> = {
   onyx: '#1a1a1a',
 };
 
+const gemBgColors: Record<string, string> = {
+  diamond: '#F5F5F4',
+  sapphire: '#2563EB',
+  emerald: '#4ADE80',
+  ruby: '#B91C1C',
+  onyx: '#0A0A14',
+};
+
 interface DevelopmentCardProps {
   card: DevelopmentCardType;
   state?: CardState;
@@ -32,7 +40,6 @@ interface DevelopmentCardProps {
 }
 
 export default function DevelopmentCard({ card, state = 'default', onClick }: DevelopmentCardProps) {
-  const size = 'w-[120px] h-[170px]';
   const cardBg = cardBackgroundImages[card.bonus];
   const fallbackBg = fallbackBgByGem[card.bonus];
 
@@ -66,10 +73,12 @@ export default function DevelopmentCard({ card, state = 'default', onClick }: De
 
   return (
     <motion.div
-      className={`${size} rounded-xl border-2 relative flex flex-col overflow-hidden cursor-pointer
+      className={`rounded-xl border-2 relative flex flex-col overflow-hidden cursor-pointer
         ${state === 'unaffordable' ? 'saturate-75 opacity-80' : ''}
       `}
       style={{
+        width: 'var(--card-width, 120px)',
+        height: 'var(--card-height, 170px)',
         borderColor: 'rgba(184,134,11,0.5)',
         backgroundColor: fallbackBg,
         boxShadow: glowShadow,
@@ -87,7 +96,12 @@ export default function DevelopmentCard({ card, state = 'default', onClick }: De
         style={{ imageRendering: 'auto' }}
         role="presentation"
       />
-      <div className="flex justify-between items-start p-2 relative z-10">
+      <div
+        className="absolute inset-0 rounded-xl z-[5] pointer-events-none"
+        style={{ background: 'rgba(0,0,0,0.4)' }}
+        aria-hidden
+      />
+      <div className="flex items-start p-2 pt-1.5 pl-2 pr-0 relative z-10">
         <div className="flex items-center justify-center w-8">
           {card.prestige > 0 && (
             <span
@@ -101,27 +115,27 @@ export default function DevelopmentCard({ card, state = 'default', onClick }: De
             </span>
           )}
         </div>
-        <div className="scale-90">
-          <GemToken type={card.bonus} size="sm" />
+        <div className="absolute top-0 right-0">
+          <GemToken type={card.bonus} size="sm" scale={2} />
         </div>
       </div>
 
-      <div className="flex-1 relative z-10 flex items-end justify-end p-2">
-        <span
-          className="text-white/70 font-bold text-xs drop-shadow-md"
-          style={{ fontFamily: 'var(--font-cinzel)' }}
-        >
-          {['I', 'II', 'III'][card.tier - 1]}
-        </span>
-      </div>
-
-      <div className="bg-black/40 rounded-b-xl p-2 min-h-[44px] flex items-center justify-center relative z-10">
+      <div className="flex-1 min-h-0 pl-1.5 pr-1 py-1 flex flex-col justify-end relative z-10">
         {Object.keys(card.cost).length > 0 ? (
-          <div className="flex flex-wrap gap-1 justify-center max-w-full">
+          <div className="flex flex-col gap-0 items-start w-full [&>div:not(:last-child)]:-mb-1.5">
             {Object.entries(card.cost).map(([gem, count]) => (
-              <div key={gem} className="flex items-center gap-0.5 bg-black/40 rounded-full px-1.5 py-0.5">
-                <GemToken type={gem as GemColor} size="xs" />
-                <span className="text-white font-bold text-xs">{count}</span>
+              <div key={gem} className="relative w-6 h-6 shrink-0">
+                <div
+                  className="w-full h-full rounded-full flex items-center justify-center border border-white/90"
+                  style={{ background: gemBgColors[gem] }}
+                >
+                  <span
+                    className={`font-extrabold text-xs ${gem === 'diamond' ? 'text-gray-800' : 'text-white'}`}
+                    style={{ textShadow: gem === 'diamond' ? '0 1px 1px rgba(255,255,255,0.8)' : '0 1px 2px rgba(0,0,0,0.7)' }}
+                  >
+                    {count}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

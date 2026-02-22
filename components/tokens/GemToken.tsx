@@ -3,6 +3,14 @@
 import { motion } from 'framer-motion';
 import type { GemType } from '@/lib/game-engine/types';
 
+const gemLogoImages: Record<string, string> = {
+  diamond: '/images/cards/diamond-logo.png',
+  sapphire: '/images/cards/sapphire-logo.png',
+  emerald: '/images/cards/emerald-logo.png',
+  ruby: '/images/cards/ruby-logo.png',
+  onyx: '/images/cards/onyx-logo.png',
+};
+
 const gemConfig: Record<GemType, { symbol: string; gradient: string; glow: string }> = {
   diamond: {
     symbol: '◆',
@@ -37,15 +45,16 @@ const gemConfig: Record<GemType, { symbol: string; gradient: string; glow: strin
 };
 
 const sizeMap = {
-  xs: { className: 'w-5 h-5', fontSize: '9px' },
-  sm: { className: 'w-7 h-7', fontSize: '12px' },
-  md: { className: 'w-10 h-10', fontSize: '16px' },
-  lg: { className: 'w-14 h-14', fontSize: '20px' },
+  xs: { className: 'w-5 h-5', fontSize: '9px', px: 20 },
+  sm: { className: 'w-7 h-7', fontSize: '12px', px: 28 },
+  md: { className: 'w-10 h-10', fontSize: '16px', px: 40 },
+  lg: { className: 'w-14 h-14', fontSize: '20px', px: 56 },
 };
 
 interface GemTokenProps {
   type: GemType;
   size?: 'xs' | 'sm' | 'md' | 'lg';
+  scale?: number;
   count?: number;
   onClick?: () => void;
   disabled?: boolean;
@@ -55,6 +64,7 @@ interface GemTokenProps {
 export default function GemToken({
   type,
   size = 'md',
+  scale: scaleProp = 1,
   count,
   onClick,
   disabled = false,
@@ -62,16 +72,21 @@ export default function GemToken({
 }: GemTokenProps) {
   const config = gemConfig[type];
   const s = sizeMap[size];
+  const scale = scaleProp > 0 ? scaleProp : 1;
+  const scaledSize = scale !== 1 ? { width: s.px * scale, height: s.px * scale } : undefined;
 
-  return (
-    <div className="relative inline-block group">
-      <motion.div
-        className={`${s.className} rounded-full relative overflow-hidden cursor-pointer`}
+  const hasLogo = !!gemLogoImages[type];
+
+  const token = (
+    <motion.div
+        className={`${s.className} relative overflow-hidden cursor-pointer ${hasLogo ? 'rounded-none' : 'rounded-full'}`}
         style={{
-          background: config.gradient,
+          background: hasLogo ? 'transparent' : config.gradient,
           boxShadow: selected
             ? `0 0 0 3px #F1C40F, 0 0 15px ${config.glow}`
-            : `0 2px 4px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.2), inset 0 -2px 4px rgba(0,0,0,0.4)`,
+            : hasLogo
+              ? '0 1px 3px rgba(0,0,0,0.2)'
+              : `0 2px 4px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.2), inset 0 -2px 4px rgba(0,0,0,0.4)`,
           opacity: disabled ? 0.4 : 1,
           filter: disabled ? 'grayscale(50%)' : 'none',
         }}
@@ -79,31 +94,62 @@ export default function GemToken({
         whileTap={!disabled ? { scale: 0.95 } : undefined}
         onClick={!disabled ? onClick : undefined}
       >
-        <div
-          className="absolute inset-0 opacity-30"
-          style={{
-            background: `conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.3) 60deg, transparent 120deg, rgba(255,255,255,0.3) 180deg, transparent 240deg, rgba(255,255,255,0.3) 300deg, transparent 360deg)`,
-          }}
-        />
-        <div
-          className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full opacity-40"
-          style={{
-            background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), transparent 60%)',
-          }}
-        />
-        <div
-          className="absolute inset-0 flex items-center justify-center text-white font-bold drop-shadow-lg"
-          style={{ fontSize: s.fontSize }}
-        >
-          {config.symbol}
-        </div>
-        <div
-          className="absolute bottom-0 left-0 right-0 h-1/3 opacity-40"
-          style={{
-            background: 'radial-gradient(ellipse at bottom, rgba(0,0,0,0.6), transparent)',
-          }}
-        />
+        {hasLogo ? (
+          <img
+            src={gemLogoImages[type]}
+            alt={type}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <>
+            <div
+              className="absolute inset-0 opacity-30"
+              style={{
+                background: `conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.3) 60deg, transparent 120deg, rgba(255,255,255,0.3) 180deg, transparent 240deg, rgba(255,255,255,0.3) 300deg, transparent 360deg)`,
+              }}
+            />
+            <div
+              className="absolute top-0 left-0 w-1/2 h-1/2 rounded-full opacity-40"
+              style={{
+                background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), transparent 60%)',
+              }}
+            />
+            <div
+              className="absolute inset-0 flex items-center justify-center text-white font-bold drop-shadow-lg"
+              style={{ fontSize: s.fontSize }}
+            >
+              {config.symbol}
+            </div>
+            <div
+              className="absolute bottom-0 left-0 right-0 h-1/3 opacity-40"
+              style={{
+                background: 'radial-gradient(ellipse at bottom, rgba(0,0,0,0.6), transparent)',
+              }}
+            />
+          </>
+        )}
       </motion.div>
+  );
+
+  return (
+    <div
+      className="relative inline-block group"
+      style={scaledSize ? { width: scaledSize.width, height: scaledSize.height } : undefined}
+    >
+      {scale !== 1 ? (
+        <div
+          className="absolute top-0 left-0 origin-top-left"
+          style={{
+            transform: `scale(${scale})`,
+            width: s.px,
+            height: s.px,
+          }}
+        >
+          {token}
+        </div>
+      ) : (
+        token
+      )}
 
       {count !== undefined && count > 0 && (
         <div className="absolute -bottom-1 -right-1 bg-white rounded-full px-1.5 py-0.5 text-[10px] font-bold text-black border border-gray-300 shadow-md min-w-[18px] text-center z-10">

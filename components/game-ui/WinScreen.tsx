@@ -9,6 +9,11 @@ interface WinScreenProps {
   players: Player[];
   onPlayAgain: () => void;
   onMainMenu: () => void;
+  isOnline?: boolean;
+  rematchVotes?: string[];
+  totalHumans?: number;
+  yourPlayerId?: string | null;
+  onRequestRematch?: () => void;
 }
 
 function Confetti() {
@@ -51,8 +56,20 @@ function Confetti() {
   );
 }
 
-export default function WinScreen({ winner, players, onPlayAgain, onMainMenu }: WinScreenProps) {
+export default function WinScreen({
+  winner,
+  players,
+  onPlayAgain,
+  onMainMenu,
+  isOnline = false,
+  rematchVotes = [],
+  totalHumans = 0,
+  yourPlayerId = null,
+  onRequestRematch,
+}: WinScreenProps) {
   const sorted = [...players].sort((a, b) => b.prestige - a.prestige || a.purchasedCards.length - b.purchasedCards.length);
+  const hasVotedRematch = yourPlayerId != null && rematchVotes.includes(yourPlayerId);
+  const rematchCount = rematchVotes.length;
 
   return (
     <>
@@ -123,16 +140,35 @@ export default function WinScreen({ winner, players, onPlayAgain, onMainMenu }: 
             ))}
           </div>
 
+          {isOnline && totalHumans > 0 && (
+            <p className="text-white/60 text-sm mb-3">
+              {rematchCount}/{totalHumans} want rematch
+            </p>
+          )}
+
           <div className="flex gap-3">
-            <motion.button
-              className="flex-1 py-3 rounded-xl bg-[#B8860B] hover:bg-[#D4A017] text-white font-bold text-lg transition-colors"
-              style={{ fontFamily: 'var(--font-cinzel)' }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onPlayAgain}
-            >
-              Play Again
-            </motion.button>
+            {isOnline && onRequestRematch ? (
+              <motion.button
+                className="flex-1 py-3 rounded-xl bg-[#B8860B] hover:bg-[#D4A017] text-white font-bold text-lg transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'var(--font-cinzel)' }}
+                whileHover={!hasVotedRematch ? { scale: 1.02 } : undefined}
+                whileTap={!hasVotedRematch ? { scale: 0.98 } : undefined}
+                onClick={onRequestRematch}
+                disabled={hasVotedRematch}
+              >
+                {hasVotedRematch ? 'Rematch requested' : 'Rematch'}
+              </motion.button>
+            ) : (
+              <motion.button
+                className="flex-1 py-3 rounded-xl bg-[#B8860B] hover:bg-[#D4A017] text-white font-bold text-lg transition-colors"
+                style={{ fontFamily: 'var(--font-cinzel)' }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onPlayAgain}
+              >
+                Play Again
+              </motion.button>
+            )}
             <motion.button
               className="flex-1 py-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-lg transition-colors"
               style={{ fontFamily: 'var(--font-cinzel)' }}

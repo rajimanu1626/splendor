@@ -25,6 +25,14 @@
   --felt-blue: #2D2D5A;
   --gold-trim: #B8860B;
   --ui-dark: #0D0D0D;
+
+  /* Game board responsive sizes (default desktop) */
+  --card-width: 120px;
+  --card-height: 170px;
+  --noble-width: 100px;
+  --noble-height: 130px;
+  --noble-scale: 1;
+  --token-bank-width: 140px;
   
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -136,6 +144,30 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+}
+
+/* Tablet: scale down game board (covers 1138×712 and similar) */
+@media (max-height: 900px), (max-width: 1200px) {
+  :root {
+    --card-width: 100px;
+    --card-height: 142px;
+    --noble-width: 72px;
+    --noble-height: 94px;
+    --noble-scale: 0.72;
+    --token-bank-width: 120px;
+  }
+}
+
+/* Small tablet / short viewport */
+@media (max-height: 700px), (max-width: 768px) {
+  :root {
+    --card-width: 88px;
+    --card-height: 125px;
+    --noble-width: 60px;
+    --noble-height: 78px;
+    --noble-scale: 0.6;
+    --token-bank-width: 100px;
+  }
 }
 
 @layer base {

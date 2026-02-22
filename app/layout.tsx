@@ -46,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${lato.variable} ${cinzel.variable} antialiased`}>
+      <body className={`${lato.variable} ${cinzel.variable} antialiased`} suppressHydrationWarning>
         {children}
         <Toaster />
         <Analytics />

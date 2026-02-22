@@ -18,8 +18,13 @@ export default function CardBack({ tier, count, onClick }: CardBackProps) {
   return (
     <div className="relative">
       <motion.div
-        className="w-[120px] h-[170px] rounded-xl border-2 relative overflow-hidden cursor-pointer"
-        style={{ borderColor: '#B8860B', background: '#0D1B2A' }}
+        className="rounded-xl border-2 relative overflow-hidden cursor-pointer"
+        style={{
+          width: 'var(--card-width, 120px)',
+          height: 'var(--card-height, 170px)',
+          borderColor: '#B8860B',
+          background: '#0D1B2A',
+        }}
         whileHover={{ scale: 1.03 }}
         whileTap={{ scale: 0.97 }}
         onClick={onClick}

@@ -10,7 +10,7 @@ interface NobleRowProps {
 
 export default function NobleRow({ nobles }: NobleRowProps) {
   return (
-    <div className="flex justify-center gap-3 pb-2">
+    <div className="flex flex-row flex-wrap justify-center gap-2 min-w-0 w-full">
       <AnimatePresence>
         {nobles.map((noble) => (
           <motion.div

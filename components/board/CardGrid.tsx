@@ -79,8 +79,12 @@ export default function CardGrid({ tiers, currentPlayer, onCardClick, onDeckClic
                 ) : (
                   <div
                     key={`empty-${tier}-${i}`}
-                    className="w-[120px] h-[170px] rounded-xl border-2 border-dashed flex items-center justify-center shrink-0"
-                    style={{ borderColor: 'rgba(184,134,11,0.2)' }}
+                    className="rounded-xl border-2 border-dashed flex items-center justify-center shrink-0"
+                    style={{
+                      width: 'var(--card-width, 120px)',
+                      height: 'var(--card-height, 170px)',
+                      borderColor: 'rgba(184,134,11,0.2)',
+                    }}
                   />
                 ),
               )}

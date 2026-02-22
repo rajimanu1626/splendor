@@ -78,77 +78,111 @@ function checkNobles(state: GameState): boolean {
 
 function advanceTurn(state: GameState): void {
   const reachedEnd = state.players.some((p) => p.prestige >= 15);
-  if (reachedEnd) state.lastRound = true;
+  if (reachedEnd && !state.lastRound) {
+    state.lastRound = true;
+    state.lastRoundStartedBy = state.currentPlayerIndex;
+  }
 
   state.currentPlayerIndex = (state.currentPlayerIndex + 1) % state.players.length;
-  if (state.currentPlayerIndex === 0) {
-    state.round++;
-    if (state.lastRound) {
-      state.phase = 'ended';
-      state.winner = determineWinner(state.players);
-      addLog(state, state.winner ? `${state.winner.name} wins!` : 'Game ended in a tie!');
-      return;
-    }
+  if (state.currentPlayerIndex === 0) state.round++;
+
+  if (state.lastRound && state.lastRoundStartedBy !== null && state.currentPlayerIndex === state.lastRoundStartedBy) {
+    state.phase = 'ended';
+    state.winner = determineWinner(state.players);
+    addLog(state, state.winner ? `${state.winner.name} wins!` : 'Game ended in a tie!');
+    return;
   }
 
   state.phase = 'playing';
   state.pendingAction = null;
 }
 
+function buildInitialState(room: Room): GameState {
+  const setupPlayers = room.players.map((p) => ({
+    name: p.playerName,
+    isAI: p.isAI,
+    aiDifficulty: p.aiDifficulty,
+  }));
+  let players = setupPlayers.map((sp, i) =>
+    createPlayer(room.players[i].playerId, sp.name, sp.isAI, sp.aiDifficulty),
+  );
+  players = shuffleDeck(players);
+
+  const tier1Deck = shuffleDeck([...TIER1_CARDS]);
+  const tier2Deck = shuffleDeck([...TIER2_CARDS]);
+  const tier3Deck = shuffleDeck([...TIER3_CARDS]);
+
+  const tier1Visible: (DevelopmentCard | null)[] = [];
+  const tier2Visible: (DevelopmentCard | null)[] = [];
+  const tier3Visible: (DevelopmentCard | null)[] = [];
+
+  for (let i = 0; i < 4; i++) {
+    tier1Visible.push(drawCard(tier1Deck));
+    tier2Visible.push(drawCard(tier2Deck));
+    tier3Visible.push(drawCard(tier3Deck));
+  }
+
+  const nobleCount = getNobleCount(players.length);
+  const nobles = shuffleDeck([...ALL_NOBLES]).slice(0, nobleCount);
+  const tokens = getInitialTokens(players.length);
+
+  return {
+    phase: 'playing',
+    players,
+    currentPlayerIndex: 0,
+    board: {
+      tier1: { visible: tier1Visible, deck: tier1Deck },
+      tier2: { visible: tier2Visible, deck: tier2Deck },
+      tier3: { visible: tier3Visible, deck: tier3Deck },
+      nobles,
+      tokens,
+    },
+    round: 1,
+    lastRound: false,
+    lastRoundStartedBy: null,
+    winner: null,
+    turnLog: ['Game started!'],
+    pendingAction: null,
+    previousState: null,
+  };
+}
+
 export class GameRoomLogic {
   state: GameState;
   onStateChange: (() => void) | null = null;
+  rematchVotes = new Set<string>();
 
   constructor(room: Room) {
-    const setupPlayers = room.players.map((p) => ({
-      name: p.playerName,
-      isAI: p.isAI,
-      aiDifficulty: p.aiDifficulty,
-    }));
-    const players = setupPlayers.map((sp, i) =>
-      createPlayer(room.players[i].playerId, sp.name, sp.isAI, sp.aiDifficulty),
-    );
-
-    const tier1Deck = shuffleDeck([...TIER1_CARDS]);
-    const tier2Deck = shuffleDeck([...TIER2_CARDS]);
-    const tier3Deck = shuffleDeck([...TIER3_CARDS]);
-
-    const tier1Visible: (DevelopmentCard | null)[] = [];
-    const tier2Visible: (DevelopmentCard | null)[] = [];
-    const tier3Visible: (DevelopmentCard | null)[] = [];
-
-    for (let i = 0; i < 4; i++) {
-      tier1Visible.push(drawCard(tier1Deck));
-      tier2Visible.push(drawCard(tier2Deck));
-      tier3Visible.push(drawCard(tier3Deck));
-    }
-
-    const nobleCount = getNobleCount(players.length);
-    const nobles = shuffleDeck([...ALL_NOBLES]).slice(0, nobleCount);
-    const tokens = getInitialTokens(players.length);
-
-    this.state = {
-      phase: 'playing',
-      players,
-      currentPlayerIndex: 0,
-      board: {
-        tier1: { visible: tier1Visible, deck: tier1Deck },
-        tier2: { visible: tier2Visible, deck: tier2Deck },
-        tier3: { visible: tier3Visible, deck: tier3Deck },
-        nobles,
-        tokens,
-      },
-      round: 1,
-      lastRound: false,
-      winner: null,
-      turnLog: ['Game started!'],
-      pendingAction: null,
-      previousState: null,
-    };
+    this.state = buildInitialState(room);
   }
 
   getState(): GameState {
     return this.state;
+  }
+
+  getRematchVotes(): { rematchVotes: string[]; totalHumans: number } {
+    const totalHumans = this.state.players.filter((p) => !p.isAI).length;
+    return {
+      rematchVotes: [...this.rematchVotes],
+      totalHumans,
+    };
+  }
+
+  voteRematch(playerId: string): boolean {
+    const humanIds = this.state.players.filter((p) => !p.isAI).map((p) => p.id);
+    if (!humanIds.includes(playerId)) return false;
+    this.rematchVotes.add(playerId);
+    return this.rematchVotes.size >= humanIds.length;
+  }
+
+  restart(room: Room): void {
+    this.rematchVotes.clear();
+    this.state = buildInitialState(room);
+    this.onStateChange?.();
+    const currentPlayer = this.state.players[this.state.currentPlayerIndex];
+    if (currentPlayer?.isAI) {
+      setTimeout(() => this.runAITurn(), 800 + Math.random() * 700);
+    }
   }
 
   private postAction(): void {

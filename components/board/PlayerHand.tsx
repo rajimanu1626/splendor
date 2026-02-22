@@ -88,8 +88,12 @@ export default function PlayerHand({ player, isActive, onReservedCardClick }: Pl
           {[...Array(3 - player.reservedCards.length)].map((_, i) => (
             <div
               key={`empty-${i}`}
-              className="w-[66px] h-[93px] rounded-lg border-2 border-dashed"
-              style={{ borderColor: 'rgba(184,134,11,0.2)' }}
+              className="rounded-lg border-2 border-dashed"
+              style={{
+                width: 'calc(var(--card-width, 120px) * 0.55)',
+                height: 'calc(var(--card-height, 170px) * 0.55)',
+                borderColor: 'rgba(184,134,11,0.2)',
+              }}
             />
           ))}
         </div>

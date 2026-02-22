@@ -62,6 +62,8 @@ export interface GameState {
   board: BoardState;
   round: number;
   lastRound: boolean;
+  /** Index of the player whose action first triggered 15+ prestige (last round). Used to end game after full round. */
+  lastRoundStartedBy: number | null;
   winner: Player | null;
   turnLog: string[];
   pendingAction: PendingAction;

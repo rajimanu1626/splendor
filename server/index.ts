@@ -6,6 +6,7 @@ import { GameRoomLogic } from './GameRoom';
 import { sanitizeForPlayer } from './sanitize';
 import { CLIENT_EVENTS, SERVER_EVENTS } from './protocol';
 import type { CreateRoomPayload, JoinRoomPayload, AddAIPayload, RejoinRoomPayload, GameActionPayload } from './protocol';
+import type { RematchUpdatePayload } from './protocol';
 
 const PORT = process.env.GAME_SERVER_PORT ? parseInt(process.env.GAME_SERVER_PORT, 10) : 3001;
 const CORS_ORIGINS = process.env.CORS_ORIGIN
@@ -162,7 +163,41 @@ io.on('connection', (socket) => {
     broadcastGameState(info.room.roomCode);
   });
 
+  socket.on(CLIENT_EVENTS.requestRematch, () => {
+    const info = RoomManager.getRoomBySocket(socket.id);
+    if (!info) return;
+    const game = gameRooms.get(info.room.roomCode);
+    const room = RoomManager.getRoom(info.room.roomCode);
+    if (!game || !room || game.getState().phase !== 'ended') return;
+    const allVoted = game.voteRematch(info.playerId);
+    const payload: RematchUpdatePayload = game.getRematchVotes();
+    const socketIds = RoomManager.getSocketIdsInRoom(room);
+    for (const id of socketIds) {
+      io.to(id).emit(SERVER_EVENTS.rematchUpdate, payload);
+    }
+    if (allVoted) {
+      game.restart(room);
+      for (const id of socketIds) {
+        io.to(id).emit(SERVER_EVENTS.rematchStarted);
+      }
+      broadcastGameState(info.room.roomCode);
+    }
+  });
+
   socket.on(CLIENT_EVENTS.quitAndReplaceWithAI, () => {
+    const info = RoomManager.getRoomBySocket(socket.id);
+    if (!info) {
+      socket.emit(SERVER_EVENTS.actionError, { message: 'Cannot quit (not in a started game)' });
+      return;
+    }
+    const { room, playerId } = info;
+    if (!room.gameStarted) {
+      socket.emit(SERVER_EVENTS.actionError, { message: 'Cannot quit (game not started)' });
+      return;
+    }
+    const quittingPlayer = room.players.find((p) => p.playerId === playerId);
+    const playerName = quittingPlayer?.playerName ?? 'A player';
+
     const result = RoomManager.replacePlayerWithAIBySocket(socket.id);
     if (!result) {
       socket.emit(SERVER_EVENTS.actionError, { message: 'Cannot quit (not in a started game)' });
@@ -171,7 +206,17 @@ io.on('connection', (socket) => {
     const game = gameRooms.get(result.roomCode);
     if (game) game.replacePlayerWithAI(result.playerId);
     socket.leave(result.roomCode);
-    broadcastGameState(result.roomCode);
+
+    const roomAfter = RoomManager.getRoom(result.roomCode);
+    const noHumansLeft = roomAfter?.players.every((p) => p.isAI) ?? false;
+    if (noHumansLeft) {
+      gameRooms.delete(result.roomCode);
+      RoomManager.removeRoom(result.roomCode);
+    } else {
+      io.to(result.roomCode).emit(SERVER_EVENTS.playerQuit, { playerName });
+      broadcastGameState(result.roomCode);
+    }
+
     socket.emit(SERVER_EVENTS.quitAccepted);
   });
 

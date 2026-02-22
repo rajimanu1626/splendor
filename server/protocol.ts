@@ -120,6 +120,15 @@ export interface PlayerReconnectedPayload {
   playerId: string;
 }
 
+export interface PlayerQuitPayload {
+  playerName: string;
+}
+
+export interface RematchUpdatePayload {
+  rematchVotes: string[];
+  totalHumans: number;
+}
+
 // Event names (for type-safe emit/on)
 export const CLIENT_EVENTS = {
   createRoom: 'createRoom',
@@ -130,6 +139,7 @@ export const CLIENT_EVENTS = {
   action: 'action',
   rejoinRoom: 'rejoinRoom',
   quitAndReplaceWithAI: 'quitAndReplaceWithAI',
+  requestRematch: 'requestRematch',
 } as const;
 
 export const SERVER_EVENTS = {
@@ -141,5 +151,8 @@ export const SERVER_EVENTS = {
   actionError: 'actionError',
   playerDisconnected: 'playerDisconnected',
   playerReconnected: 'playerReconnected',
+  playerQuit: 'playerQuit',
   quitAccepted: 'quitAccepted',
+  rematchUpdate: 'rematchUpdate',
+  rematchStarted: 'rematchStarted',
 } as const;

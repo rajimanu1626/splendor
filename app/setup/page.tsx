@@ -148,7 +148,7 @@ function SetupContent() {
           </p>
           <div className="flex justify-center gap-2">
             {(['diamond', 'sapphire', 'emerald', 'ruby', 'onyx'] as const).map((gem) => (
-              <GemToken key={gem} type={gem} size="sm" />
+              <GemToken key={gem} type={gem} size="lg" scale={1.5} />
             ))}
           </div>
         </div>

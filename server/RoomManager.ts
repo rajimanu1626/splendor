@@ -219,6 +219,16 @@ class RoomManagerClass {
   getSocketIdsInRoom(room: Room): string[] {
     return room.players.filter((p): p is RoomPlayer & { socketId: string } => p.socketId != null).map((p) => p.socketId);
   }
+
+  removeRoom(roomCode: string): void {
+    const room = this.rooms.get(roomCode.toUpperCase().trim());
+    if (room) {
+      for (const p of room.players) {
+        if (p.socketId) this.socketToRoom.delete(p.socketId);
+      }
+      this.rooms.delete(roomCode.toUpperCase().trim());
+    }
+  }
 }
 
 export const RoomManager = new RoomManagerClass();

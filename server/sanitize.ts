@@ -53,6 +53,7 @@ export function sanitizeForPlayer(state: GameState, playerId: string): Sanitized
     board,
     round: state.round,
     lastRound: state.lastRound,
+    lastRoundStartedBy: state.lastRoundStartedBy,
     winner: state.winner ? { ...state.winner, reservedCards: [] } : null,
     turnLog: [...state.turnLog],
     pendingAction: state.pendingAction,
