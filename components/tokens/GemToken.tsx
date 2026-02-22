@@ -9,6 +9,7 @@ const gemLogoImages: Record<string, string> = {
   emerald: '/images/cards/emerald-logo.png',
   ruby: '/images/cards/ruby-logo.png',
   onyx: '/images/cards/onyx-logo.png',
+  gold: '/images/cards/gold-logo.png',
 };
 
 const gemConfig: Record<GemType, { symbol: string; gradient: string; glow: string }> = {
@@ -55,6 +56,8 @@ interface GemTokenProps {
   type: GemType;
   size?: 'xs' | 'sm' | 'md' | 'lg';
   scale?: number;
+  /** When true, scale only the visual; layout box stays at base size (preserves alignment). */
+  scaleVisualOnly?: boolean;
   count?: number;
   onClick?: () => void;
   disabled?: boolean;
@@ -65,6 +68,7 @@ export default function GemToken({
   type,
   size = 'md',
   scale: scaleProp = 1,
+  scaleVisualOnly = false,
   count,
   onClick,
   disabled = false,
@@ -73,7 +77,8 @@ export default function GemToken({
   const config = gemConfig[type];
   const s = sizeMap[size];
   const scale = scaleProp > 0 ? scaleProp : 1;
-  const scaledSize = scale !== 1 ? { width: s.px * scale, height: s.px * scale } : undefined;
+  const useVisualOnly = scale !== 1 && scaleVisualOnly;
+  const scaledSize = scale !== 1 && !scaleVisualOnly ? { width: s.px * scale, height: s.px * scale } : undefined;
 
   const hasLogo = !!gemLogoImages[type];
 
@@ -134,15 +139,22 @@ export default function GemToken({
   return (
     <div
       className="relative inline-block group"
-      style={scaledSize ? { width: scaledSize.width, height: scaledSize.height } : undefined}
+      style={{
+        ...(scaledSize ? { width: scaledSize.width, height: scaledSize.height } : useVisualOnly ? { width: s.px, height: s.px, overflow: 'visible' } : undefined),
+      }}
     >
       {scale !== 1 ? (
         <div
-          className="absolute top-0 left-0 origin-top-left"
+          className="absolute"
           style={{
             transform: `scale(${scale})`,
+            transformOrigin: useVisualOnly ? 'center center' : 'top left',
             width: s.px,
             height: s.px,
+            left: useVisualOnly ? '50%' : 0,
+            top: useVisualOnly ? '50%' : 0,
+            marginLeft: useVisualOnly ? -s.px / 2 : 0,
+            marginTop: useVisualOnly ? -s.px / 2 : 0,
           }}
         >
           {token}

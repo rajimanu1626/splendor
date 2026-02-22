@@ -10,12 +10,13 @@ import { canPurchaseCard, canReserveCard, calculateGemPayment } from '@/lib/game
 interface ActionModalProps {
   card: DevelopmentCardType;
   player: Player;
+  viewOnly?: boolean;
   onPurchase: () => void;
   onReserve: () => void;
   onClose: () => void;
 }
 
-export default function ActionModal({ card, player, onPurchase, onReserve, onClose }: ActionModalProps) {
+export default function ActionModal({ card, player, viewOnly = false, onPurchase, onReserve, onClose }: ActionModalProps) {
   const affordable = canPurchaseCard(player, card);
   const canReserve = canReserveCard(player);
   const payment = affordable ? calculateGemPayment(player, card) : null;
@@ -48,7 +49,7 @@ export default function ActionModal({ card, player, onPurchase, onReserve, onClo
             className="text-[#B8860B] text-lg font-bold mb-4"
             style={{ fontFamily: 'var(--font-cinzel)' }}
           >
-            Card Action
+            {viewOnly ? 'Card Details' : 'Card Action'}
           </h2>
 
           <div className="flex justify-center mb-4">
@@ -98,37 +99,39 @@ export default function ActionModal({ card, player, onPurchase, onReserve, onClo
             </div>
           )}
 
-          <div className="flex gap-3 mt-4">
-            <motion.button
-              className={`flex-1 py-3 rounded-xl font-bold text-lg transition-colors ${
-                affordable
-                  ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
-                  : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-              }`}
-              style={{ fontFamily: 'var(--font-cinzel)' }}
-              whileHover={affordable ? { scale: 1.02 } : undefined}
-              whileTap={affordable ? { scale: 0.98 } : undefined}
-              onClick={affordable ? onPurchase : undefined}
-              disabled={!affordable}
-            >
-              Purchase
-            </motion.button>
+          {!viewOnly && (
+            <div className="flex gap-3 mt-4">
+              <motion.button
+                className={`flex-1 py-3 rounded-xl font-bold text-lg transition-colors ${
+                  affordable
+                    ? 'bg-emerald-700 hover:bg-emerald-600 text-white'
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                }`}
+                style={{ fontFamily: 'var(--font-cinzel)' }}
+                whileHover={affordable ? { scale: 1.02 } : undefined}
+                whileTap={affordable ? { scale: 0.98 } : undefined}
+                onClick={affordable ? onPurchase : undefined}
+                disabled={!affordable}
+              >
+                Purchase
+              </motion.button>
 
-            <motion.button
-              className={`flex-1 py-3 rounded-xl font-bold text-lg transition-colors ${
-                canReserve
-                  ? 'bg-[#B8860B] hover:bg-[#D4A017] text-white'
-                  : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-              }`}
-              style={{ fontFamily: 'var(--font-cinzel)' }}
-              whileHover={canReserve ? { scale: 1.02 } : undefined}
-              whileTap={canReserve ? { scale: 0.98 } : undefined}
-              onClick={canReserve ? onReserve : undefined}
-              disabled={!canReserve}
-            >
-              Reserve
-            </motion.button>
-          </div>
+              <motion.button
+                className={`flex-1 py-3 rounded-xl font-bold text-lg transition-colors ${
+                  canReserve
+                    ? 'bg-[#B8860B] hover:bg-[#D4A017] text-white'
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                }`}
+                style={{ fontFamily: 'var(--font-cinzel)' }}
+                whileHover={canReserve ? { scale: 1.02 } : undefined}
+                whileTap={canReserve ? { scale: 0.98 } : undefined}
+                onClick={canReserve ? onReserve : undefined}
+                disabled={!canReserve}
+              >
+                Reserve
+              </motion.button>
+            </div>
+          )}
         </motion.div>
       </motion.div>
     </AnimatePresence>

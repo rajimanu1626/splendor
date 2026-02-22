@@ -53,14 +53,14 @@ export default function PlayerHand({ player, isActive, onReservedCardClick }: Pl
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 shrink-0">
+      <div className="flex flex-col gap-1.5 shrink-0">
         <span className="text-[#B8860B] text-xs tracking-widest uppercase">Gems</span>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           {ALL_GEM_TYPES.map(
             (gem) =>
               player.gems[gem] > 0 && (
                 <div key={gem} className="flex flex-col items-center">
-                  <GemToken type={gem} size="md" />
+                  <GemToken type={gem} size="md" scale={2.1} scaleVisualOnly />
                   <span className="text-white font-bold text-sm mt-1">{player.gems[gem]}</span>
                 </div>
               ),
@@ -99,18 +99,18 @@ export default function PlayerHand({ player, isActive, onReservedCardClick }: Pl
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 shrink-0">
+      <div className="flex flex-col gap-1.5 shrink-0">
         <span className="text-[#B8860B] text-xs tracking-widest uppercase">Bonuses</span>
-        <div className="flex flex-wrap gap-1.5 max-w-[200px]">
+        <div className="flex flex-wrap gap-2.5 max-w-[200px]">
           {GEM_COLORS.map(
             (gem) =>
               player.bonuses[gem] > 0 && (
                 <div
                   key={gem}
-                  className="flex items-center gap-1 px-2 py-1 rounded-full text-sm font-bold text-white"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-full text-sm font-bold text-white"
                   style={{ background: bonusBgColors[gem] }}
                 >
-                  <GemToken type={gem} size="xs" />
+                  <GemToken type={gem} size="xs" scale={3} scaleVisualOnly />
                   <span>&times;{player.bonuses[gem]}</span>
                 </div>
               ),

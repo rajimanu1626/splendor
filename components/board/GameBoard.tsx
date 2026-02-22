@@ -56,6 +56,7 @@ export default function GameBoard() {
       : currentPlayer;
 
   const [selectedCard, setSelectedCard] = useState<DevelopmentCardType | null>(null);
+  const [viewOnly, setViewOnly] = useState(false);
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [selectedTokens, setSelectedTokens] = useState<GemColor[]>([]);
   const [aiThinking, setAiThinking] = useState(false);
@@ -157,6 +158,13 @@ export default function GameBoard() {
   function handleCardClick(card: DevelopmentCardType) {
     if (!isHumanTurn) return;
     if ('hidden' in card && card.hidden) return;
+    setViewOnly(false);
+    setSelectedCard(card);
+  }
+
+  function handleReservedCardClick(card: DevelopmentCardType) {
+    if ('hidden' in card && card.hidden) return;
+    setViewOnly(!isHumanTurn);
     setSelectedCard(card);
   }
 
@@ -277,7 +285,7 @@ export default function GameBoard() {
               <PlayerHand
                 player={bottomPlayer}
                 isActive={isMyTurn}
-                onReservedCardClick={(card) => handleCardClick(card)}
+                onReservedCardClick={handleReservedCardClick}
               />
             )}
           </div>
@@ -338,13 +346,17 @@ export default function GameBoard() {
       </div>
 
       <AnimatePresence>
-        {selectedCard && currentPlayer && (
+        {selectedCard && (viewOnly ? bottomPlayer : currentPlayer) && (
           <ActionModal
             card={selectedCard}
-            player={currentPlayer}
+            player={viewOnly ? bottomPlayer! : currentPlayer!}
+            viewOnly={viewOnly}
             onPurchase={handlePurchase}
             onReserve={handleReserve}
-            onClose={() => setSelectedCard(null)}
+            onClose={() => {
+              setSelectedCard(null);
+              setViewOnly(false);
+            }}
           />
         )}
       </AnimatePresence>
@@ -360,7 +372,7 @@ export default function GameBoard() {
         )}
       </AnimatePresence>
 
-      {phase === 'discardTokens' && currentPlayer && !isCurrentPlayerAI && pendingAction?.type === 'discard' && (
+      {phase === 'discardTokens' && currentPlayer && !isCurrentPlayerAI && isMyTurn && pendingAction?.type === 'discard' && (
         <DiscardModal
           player={currentPlayer}
           tokensToDiscard={pendingAction.tokensToDiscard}
@@ -368,7 +380,7 @@ export default function GameBoard() {
         />
       )}
 
-      {phase === 'nobleChoice' && currentPlayer && !isCurrentPlayerAI && pendingAction?.type === 'nobleChoice' && (
+      {phase === 'nobleChoice' && currentPlayer && !isCurrentPlayerAI && isMyTurn && pendingAction?.type === 'nobleChoice' && (
         <NobleChoiceModal
           nobles={board.nobles.filter((n) => pendingAction.nobleIds.includes(n.id))}
           onSelect={handleNobleChoice}

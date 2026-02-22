@@ -83,28 +83,29 @@ export default function PlayerSidebar({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-3 gap-2">
               {ALL_GEM_TYPES.map(
                 (gem) =>
                   player.gems[gem] > 0 && (
-                    <div key={gem} className="flex items-center gap-1">
-                      <GemToken type={gem} size="xs" />
+                    <div key={gem} className="flex items-center gap-1.5">
+                      <GemToken type={gem} size="xs" scale={2.1} scaleVisualOnly />
                       <span className="text-white text-xs font-bold">{player.gems[gem]}</span>
                     </div>
                   ),
               )}
             </div>
 
-            <div className="flex flex-wrap gap-1">
+            <div className="flex flex-wrap gap-2">
               {GEM_COLORS.map(
                 (gem) =>
                   player.bonuses[gem] > 0 && (
                     <div
                       key={gem}
-                      className="px-1.5 py-0.5 rounded text-white text-xs font-bold"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded text-white text-xs font-bold"
                       style={{ background: bonusBgColors[gem] }}
                     >
-                      <GemToken type={gem} size="xs" /> {player.bonuses[gem]}
+                      <GemToken type={gem} size="xs" scale={3} scaleVisualOnly />
+                      <span>{player.bonuses[gem]}</span>
                     </div>
                   ),
               )}
